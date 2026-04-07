@@ -1,63 +1,217 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useCallback } from "react";
+import { Header } from "@/components/header";
+import { VibeInput } from "@/components/vibe-input";
+import { NowPlaying } from "@/components/now-playing";
+import { QueuePanel } from "@/components/queue-panel";
+import { VibesSidebar } from "@/components/vibes-sidebar";
+
+// Mock data for demonstration
+const mockSongs = [
+  {
+    id: "1",
+    title: "Midnight City",
+    artist: "M83",
+    artwork:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop",
+    vibeExplanation:
+      "The synth-driven anthem captures that late-night energy with its pulsing bassline and nostalgic 80s feel — perfect for your electric night drive mood.",
+    duration: "4:03",
+  },
+  {
+    id: "2",
+    title: "Blinding Lights",
+    artist: "The Weeknd",
+    artwork:
+      "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
+    vibeExplanation:
+      "Retro-futuristic synths meet modern production, creating an irresistible groove that matches your energetic vibe.",
+    duration: "3:20",
+  },
+  {
+    id: "3",
+    title: "Starboy",
+    artist: "The Weeknd ft. Daft Punk",
+    artwork:
+      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
+    vibeExplanation:
+      "The collaboration brings together slick production and confident vocals for that premium feel.",
+    duration: "3:50",
+  },
+  {
+    id: "4",
+    title: "Nights",
+    artist: "Frank Ocean",
+    artwork:
+      "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop",
+    vibeExplanation:
+      "A sonic journey that shifts halfway through, mirroring the transformative energy of late-night introspection.",
+    duration: "5:07",
+  },
+  {
+    id: "5",
+    title: "Redbone",
+    artist: "Childish Gambino",
+    artwork:
+      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop",
+    vibeExplanation:
+      "Groovy, soulful, and hypnotic — this track brings that laid-back yet captivating atmosphere you&apos;re looking for.",
+    duration: "5:26",
+  },
+];
+
+const initialSavedVibes = [
+  { id: "1", name: "Late Night Drive", trackCount: 24, color: "#10b981" },
+  { id: "2", name: "Focus Mode", trackCount: 18, color: "#6366f1" },
+  { id: "3", name: "Sunday Morning", trackCount: 12, color: "#f59e0b" },
+];
+
+const initialRecentPrompts = [
+  { id: "1", text: "chill beats for coding", timestamp: "2 hours ago" },
+  { id: "2", text: "energetic workout pump", timestamp: "Yesterday" },
+  { id: "3", text: "rainy day jazz", timestamp: "2 days ago" },
+];
+
+export default function VibeShuffle() {
+  const [currentVibe, setCurrentVibe] = useState<string>("");
+  const [currentSong, setCurrentSong] = useState<(typeof mockSongs)[0] | null>(
+    null
+  );
+  const [queue, setQueue] = useState<typeof mockSongs>([]);
+  const [savedVibes, setSavedVibes] = useState(initialSavedVibes);
+  const [recentPrompts, setRecentPrompts] = useState(initialRecentPrompts);
+  const [isLoading, setIsLoading] = useState(false);
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [isVibeSaved, setIsVibeSaved] = useState(false);
+
+  const handleVibeSubmit = useCallback((vibe: string) => {
+    setIsLoading(true);
+    setCurrentVibe(vibe);
+    setIsVibeSaved(false);
+
+    // Add to recent prompts
+    setRecentPrompts((prev) => {
+      const filtered = prev.filter((p) => p.text !== vibe);
+      return [
+        { id: Date.now().toString(), text: vibe, timestamp: "Just now" },
+        ...filtered,
+      ].slice(0, 5);
+    });
+
+    // Simulate API call
+    setTimeout(() => {
+      const shuffled = [...mockSongs].sort(() => Math.random() - 0.5);
+      setCurrentSong(shuffled[0]);
+      setQueue(shuffled.slice(1));
+      setIsLoading(false);
+    }, 800);
+  }, []);
+
+  const handleLike = useCallback(() => {
+    if (currentSong) {
+      setLikedSongs((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(currentSong.id)) {
+          newSet.delete(currentSong.id);
+        } else {
+          newSet.add(currentSong.id);
+        }
+        return newSet;
+      });
+    }
+  }, [currentSong]);
+
+  const handleDislike = useCallback(() => {
+    if (queue.length > 0) {
+      setCurrentSong(queue[0]);
+      setQueue((prev) => prev.slice(1));
+    }
+  }, [queue]);
+
+  const handleSkip = useCallback(() => {
+    if (queue.length > 0) {
+      setCurrentSong(queue[0]);
+      setQueue((prev) => prev.slice(1));
+    }
+  }, [queue]);
+
+  const handleSaveVibe = useCallback(() => {
+    if (currentVibe && !isVibeSaved) {
+      const colors = ["#10b981", "#6366f1", "#f59e0b", "#ec4899", "#8b5cf6"];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      setSavedVibes((prev) => [
+        {
+          id: Date.now().toString(),
+          name: currentVibe,
+          trackCount: queue.length + 1,
+          color: randomColor,
+        },
+        ...prev,
+      ]);
+      setIsVibeSaved(true);
+    }
+  }, [currentVibe, queue.length, isVibeSaved]);
+
+  const handleSelectVibe = useCallback(
+    (vibe: { name: string }) => {
+      handleVibeSubmit(vibe.name);
+    },
+    [handleVibeSubmit]
+  );
+
+  const handleDeleteVibe = useCallback((id: string) => {
+    setSavedVibes((prev) => prev.filter((v) => v.id !== id));
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Vibe Input Section */}
+        <section className="mb-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3 text-balance">
+              What&apos;s your vibe?
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Describe how you&apos;re feeling and let AI curate the perfect
+              playlist
+            </p>
+          </div>
+          <VibeInput onSubmit={handleVibeSubmit} isLoading={isLoading} />
+        </section>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Now Playing & Queue */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <NowPlaying
+                song={currentSong}
+                currentVibe={currentVibe}
+                onLike={handleLike}
+                onDislike={handleDislike}
+                onSkip={handleSkip}
+                onSaveVibe={handleSaveVibe}
+                isLiked={currentSong ? likedSongs.has(currentSong.id) : false}
+                isSaved={isVibeSaved}
+              />
+              <QueuePanel queue={queue} />
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-4">
+            <VibesSidebar
+              savedVibes={savedVibes}
+              recentPrompts={recentPrompts}
+              onSelectVibe={handleSelectVibe}
+              onSelectPrompt={handleVibeSubmit}
+              onDeleteVibe={handleDeleteVibe}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
       </main>
     </div>
