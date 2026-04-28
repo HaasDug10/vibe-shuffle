@@ -85,12 +85,11 @@ export default function VibeShuffle() {
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [isVibeSaved, setIsVibeSaved] = useState(false);
 
-  const handleVibeSubmit = useCallback((vibe: string) => {
+  const handleVibeSubmit = useCallback(async (vibe: string) => {
     setIsLoading(true);
     setCurrentVibe(vibe);
     setIsVibeSaved(false);
-
-    // Add to recent prompts
+  
     setRecentPrompts((prev) => {
       const filtered = prev.filter((p) => p.text !== vibe);
       return [
@@ -98,14 +97,33 @@ export default function VibeShuffle() {
         ...filtered,
       ].slice(0, 5);
     });
-
-    // Simulate API call
-    setTimeout(() => {
-      const shuffled = [...mockSongs].sort(() => Math.random() - 0.5);
-      setCurrentSong(shuffled[0]);
-      setQueue(shuffled.slice(1));
-      setIsLoading(false);
-    }, 800);
+  
+    try {
+      const res = await fetch("/api/vibe/parse", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: vibe }),
+      });
+  
+      const data = await res.json();
+      console.log("🔥 AI + SPOTIFY RESULT:", data);
+  
+      const tracks = data.tracks || [];
+  
+      if (tracks.length > 0) {
+        setCurrentSong(tracks[0]);
+        setQueue(tracks.slice(1));
+      } else {
+        setCurrentSong(null);
+        setQueue([]);
+      }
+    } catch (err) {
+      console.error("Error calling API:", err);
+    }
+  
+    setIsLoading(false);
   }, []);
 
   const handleLike = useCallback(() => {
